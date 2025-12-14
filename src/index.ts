@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ path: '.env', quiet: true });
+dotenv.config({ path: ".env", quiet: true });
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -9,11 +9,9 @@ import {
   GetPromptRequestSchema,
   GetPromptRequest,
   GetPromptResult,
-  CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Langfuse, ChatPromptClient } from "langfuse";
 import { extractVariables } from "./utils.js";
-import { z } from "zod";
 
 // Requires Environment Variables
 const langfuse = new Langfuse();
@@ -136,87 +134,6 @@ async function getPromptHandler(
 // Register handlers
 server.server.setRequestHandler(ListPromptsRequestSchema, listPromptsHandler);
 server.server.setRequestHandler(GetPromptRequestSchema, getPromptHandler);
-
-// Tools for compatibility
-server.tool(
-  "get-prompts",
-  "Get prompts that are stored in Langfuse",
-  {
-    cursor: z
-      .string()
-      .optional()
-      .describe("Cursor to paginate through prompts"),
-  },
-  async (args) => {
-    try {
-      const res = await listPromptsHandler({
-        method: "prompts/list",
-        params: {
-          cursor: args.cursor,
-        },
-      });
-
-      const parsedRes: CallToolResult = {
-        content: res.prompts.map((p) => ({
-          type: "text",
-          text: JSON.stringify(p),
-        })),
-      };
-
-      return parsedRes;
-    } catch (error) {
-      return {
-        content: [{ type: "text", text: "Error: " + error }],
-        isError: true,
-      };
-    }
-  }
-);
-
-server.tool(
-  "get-prompt",
-  "Get a prompt that is stored in Langfuse",
-  {
-    name: z
-      .string()
-      .describe(
-        "Name of the prompt to retrieve, use get-prompts to get a list of prompts"
-      ),
-    arguments: z
-      .record(z.string())
-      .optional()
-      .describe(
-        'Arguments with prompt variables to pass to the prompt template, json object, e.g. {"<name>":"<value>"}'
-      ),
-  },
-  async (args, extra) => {
-    try {
-      const res = await getPromptHandler({
-        method: "prompts/get",
-        params: {
-          name: args.name,
-          arguments: args.arguments,
-        },
-      });
-
-      const parsedRes: CallToolResult = {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(res),
-          },
-        ],
-      };
-
-      return parsedRes;
-    } catch (error) {
-      return {
-        content: [{ type: "text", text: "Error: " + error }],
-        isError: true,
-      };
-    }
-  }
-);
 
 async function main() {
   const transport = new StdioServerTransport();
